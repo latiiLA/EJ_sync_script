@@ -2,3 +2,4 @@
 node_modules/
 lastSync.json
 sync.log
+.env
