@@ -21,13 +21,10 @@ try {
     process.exit(1);
 }
 
-logger.info("MongoDB connected");
-
 // Run cron job
-
 let isSyncRunning = false;
 
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("0 */3 * * *", async () => {
     if (isSyncRunning) {
         logger.warn("Previous sync still running. Skipping...");
         return;
