@@ -2,12 +2,26 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cron from "node-cron";
 import { syncTerminals } from "./ejsync.js";
+import logger from "./log.js";
 
 dotenv.config();
 
-await mongoose.connect(process.env.MONGO_URL);
+const REQUIRED_ENV = ["MONGO_URL", "API_URL", "API_KEY"];
+const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missing.length > 0) {
+    logger.error(`Missing env variables: ${missing.join(", ")}`);
+    process.exit(1);
+}
 
-console.log("MongoDB connected");
+try {
+    await mongoose.connect(process.env.MONGO_URL);
+    logger.info("MongoDB connected");
+} catch (err) {
+    logger.error(`MongoDB connection failed: ${err.message}`);
+    process.exit(1);
+}
+
+logger.info("MongoDB connected");
 
 // Run cron job
 
@@ -15,17 +29,17 @@ let isSyncRunning = false;
 
 cron.schedule("*/1 * * * *", async () => {
     if (isSyncRunning) {
-        console.log("Previous sync still running. Skipping...");
+        logger.warn("Previous sync still running. Skipping...");
         return;
     }
 
     isSyncRunning = true;
 
     try {
-        console.log("Running sync...");
+        logger.info("Running sync...");
         await syncTerminals();
     } catch (err) {
-        console.error(err);
+        logger.error(`Sync crashed: ${err.message}`);
     } finally {
         isSyncRunning = false;
     }

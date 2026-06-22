@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import Terminal from "./terminalModel.js";
 import Branch from "./branchModel.js";
 import District from "./districtModel.js";
+import logger from "./log.js";
 
 const api = axios.create({
     baseURL: process.env.API_URL,
@@ -52,29 +53,30 @@ export async function syncTerminals() {
         branchName: terminal.branchName?.companyName ?? null,
     }));
 
-    console.log(`Found ${terminals.length} updated terminals.`);
-    console.log("x-api-key", process.env.API_KEY)
-
-    let allSuccessful = true;
-
-    for (const terminal of terminals) {
-        try {
-            await api.post("/ejsync_update/", terminal);
-
-            console.log(`Updated ${terminal.terminalId}`);
-        } catch (error) {
-            allSuccessful = false;
-
-            console.error(
-                `Update failed ${terminal.terminalId}`,
-                error.response?.data || error.message
-            );
-        }
+    if (terminals.length === 0) {
+        logger.info("Nothing to sync.");
+        return;
     }
 
-    if (allSuccessful) {
+    logger.info(`Found ${terminals.length} updated terminals.`);
+
+    const results = await Promise.allSettled(
+        terminals.map(t => api.post("/ejsync_update/", t))
+    );
+
+    results.forEach((result, i) => {
+        if (result.status === "rejected") {
+            logger.error(`Failed: ${terminals[i].terminalId}`, result.reason?.message);
+        } else {
+            logger.info(`Synced: ${terminals[i].terminalId}`);
+        }
+    });
+
+    const failed = results.filter(r => r.status === "rejected");
+    if (failed.length === 0) {
         await saveLastSync(new Date());
+        logger.info("Sync complete. lastSync updated.");
     } else {
-        console.log("Some terminals failed. lastSync not updated.");
+        logger.warn(`${failed.length} terminal(s) failed. lastSync not updated.`);
     }
 }
