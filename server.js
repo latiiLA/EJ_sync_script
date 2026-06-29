@@ -24,7 +24,7 @@ try {
 // Run cron job
 let isSyncRunning = false;
 
-cron.schedule("0 */3 * * *", async () => {
+async function runSync() {
     if (isSyncRunning) {
         logger.warn("Previous sync still running. Skipping...");
         return;
@@ -40,4 +40,9 @@ cron.schedule("0 */3 * * *", async () => {
     } finally {
         isSyncRunning = false;
     }
-});
+}
+
+await runSync();
+
+// then schedule
+cron.schedule("0 * * * *", runSync);

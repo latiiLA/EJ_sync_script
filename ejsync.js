@@ -60,13 +60,31 @@ export async function syncTerminals() {
 
     logger.info(`Found ${terminals.length} updated terminals.`);
 
-    const results = await Promise.allSettled(
-        terminals.map(t => api.post("/ejsync_update/", t))
-    );
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const results = [];
+    for (const t of terminals) {
+        const result = await api.post("/ejsync_update/", t).then(
+            value => ({ status: "fulfilled", value }),
+            reason => ({ status: "rejected", reason })
+        );
+
+        if (result.status === "rejected") {
+            logger.warn(`Retrying: ${t.terminalId}`);
+            await sleep(1000); // wait a bit before retry
+            result = await api.post("/ejsync_update/", t).then(
+                value => ({ status: "fulfilled", value }),
+                reason => ({ status: "rejected", reason })
+            );
+        }
+
+        results.push(result);
+        await sleep(10);
+    }
 
     results.forEach((result, i) => {
         if (result.status === "rejected") {
-            logger.error(`Failed: ${terminals[i].terminalId}`, result.reason?.message);
+            logger.error(`Failed: ${terminals[i].terminalId} - ${result.reason?.response?.data || result.reason?.message}`);
         } else {
             logger.info(`Synced: ${terminals[i].terminalId}`);
         }
