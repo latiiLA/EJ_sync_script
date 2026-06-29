@@ -1,7 +1,10 @@
 {
   "type": "module",
+  "nodemon": {
+    "ignore": ["lastSync.json", "logs/", "*.log"]
+  },
   "scripts": {
-    "server": "nodemon server.js"
+    "server": "nodemon --ignore lastSync.json --ignore 'logs/*' --ignore '*.log' server.js"
   },
   "dependencies": {
     "axios": "^1.18.0",
