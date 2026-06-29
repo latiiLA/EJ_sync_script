@@ -1,5 +1,6 @@
 # Node modules
 node_modules/
 lastSync.json
-sync.log
+logs/
+lastSync.json
 .env
